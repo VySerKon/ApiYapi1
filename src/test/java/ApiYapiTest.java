@@ -1,4 +1,7 @@
 import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -11,8 +14,7 @@ import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.get;
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.*;
 
 
 public class ApiYapiTest {
@@ -58,100 +60,65 @@ public class ApiYapiTest {
                 .body("createdAt", notNullValue());
     }
 
+    //это с предусловием, тестом и постусловием, субъективно гибко, чтобы тест проходил без следов - 3 в 1
+    private int userId;
 
+    @BeforeEach
+    void setUp() {
+        // Создаю пользователя один раз перед каждым тестом
+        Map<String, String> userData = new HashMap<>();
+        userData.put("name", "Shiza");
+        userData.put("job", "Superman");
 
+        Response response = given()
+                .log().all()
+                .contentType(ContentType.JSON)
+                .header("x-api-key", "reqres-free-v1")
+                .body(userData)
+                .when()
+                .post("https://reqres.in/api/users")
+                .then()
+                .log().all()
+                .extract().response();
+
+        userId = response.jsonPath().getInt("id");// Сохраняю ИД для тестов
+        System.out.println("Created user ID: " + userId);
+    }
+
+    @Test
+    @DisplayName("Обновление пользователя через PUT (с проверкой ответа)")
+    void updateUser_PutRequest_ReturnsUpdatedData() {
+        Map<String, String> updatedData = new HashMap<>();
+        updatedData.put("name", "Shiza UPDATED");
+        updatedData.put("job", "Batman");
+
+        given()
+                .log().all()
+                .contentType(ContentType.JSON)
+                .header("x-api-key", "reqres-free-v1")
+                .body(updatedData)
+                .when()
+                .put("https://reqres.in/api/users/" + userId)
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("name", equalTo("Shiza UPDATED"))  // Проверяю новое имя
+                .body("job", equalTo("Batman"))         // Проверяю новую работу
+                .body("updatedAt", notNullValue());     // Проверяю дату обновления
+    }
+
+    @AfterEach
+    void tearDown() {
+        given()
+                .log().all()
+                .header("x-api-key", "reqres-free-v1")
+                .when()
+                .delete("https://reqres.in/api/users/" + userId)
+                .then()
+                .log().all()
+                .statusCode(204);
+    }
 }
 
-@Test
-@DisplayName("Создание → обновление через PUT → проверка, что данные изменились")
-void createUserThenUpdateAndVerify() {
-    // 1. Создаём пользователя
-    Map<String, String> createUserBody = new HashMap<>();
-    createUserBody.put("name", "Shiza");
-    createUserBody.put("job", "Superman");
 
-    Response createResponse = given()
-            .contentType(ContentType.JSON)
-            .header("x-api-key", "reqres-free-v1")
-            .body(createUserBody)
-            .when()
-            .post("https://reqres.in/api/users");
 
-    createResponse.then().statusCode(201);
-    int userId = createResponse.jsonPath().getInt("id");
-
-    // 2. Обновляем его данные через PUT
-    Map<String, String> updateUserBody = new HashMap<>();
-    updateUserBody.put("name", "Shiza UPDATED");
-    updateUserBody.put("job", "Batman");
-
-    given()
-            .contentType(ContentType.JSON)
-            .header("x-api-key", "reqres-free-v1")
-            .body(updateUserBody)
-            .when()
-            .put("https://reqres.in/api/users/" + userId)
-            .then()
-            .statusCode(200);
-
-    // 3. Проверяем через GET, что данные обновились
-    given()
-            .header("x-api-key", "reqres-free-v1")
-            .when()
-            .get("https://reqres.in/api/users/" + userId)
-            .then()
-            .statusCode(200)
-            .body("data.name", equalTo("Shiza UPDATED")) // Проверяем имя
-            .body("data.job", equalTo("Batman"));        // Проверяем работу
-}
-
-//это с предусловием, тестом и постусловием
-private int userId;
-
-@BeforeEach
-void setUp() {
-    // Создаём пользователя один раз перед каждым тестом
-    Map<String, String> userData = new HashMap<>();
-    userData.put("name", "Shiza");
-    userData.put("job", "Superman");
-
-    Response response = given()
-            .contentType(ContentType.JSON)
-            .header("x-api-key", "reqres-free-v1")
-            .body(userData)
-            .when()
-            .post("https://reqres.in/api/users");
-
-    userId = response.jsonPath().getInt("id"); // Сохраняем ID для тестов
-}
-
-@Test
-@DisplayName("Обновление пользователя через PUT (проверка ответа)")
-void updateUser_PutRequest_ReturnsUpdatedData() {
-    Map<String, String> updatedData = new HashMap<>();
-    updatedData.put("name", "Shiza UPDATED");
-    updatedData.put("job", "Batman");
-
-    given()
-            .contentType(ContentType.JSON)
-            .header("x-api-key", "reqres-free-v1")
-            .body(updatedData)
-            .when()
-            .put("https://reqres.in/api/users/" + userId)
-            .then()
-            .statusCode(200)
-            .body("name", equalTo("Shiza UPDATED"))  // Проверяем новое имя
-            .body("job", equalTo("Batman"))         // Проверяем новую работу
-            .body("updatedAt", notNullValue());     // Проверяем дату обновления
-}
-
-@AfterEach
-void tearDown() {
-    // Если API поддерживает удаление – можно добавить
-    given()
-            .header("x-api-key", "reqres-free-v1")
-            .when()
-            .delete("https://reqres.in/api/users/" + userId)
-            .then()
-            .statusCode(204);
-}
