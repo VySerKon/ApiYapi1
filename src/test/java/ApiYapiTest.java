@@ -34,7 +34,10 @@ public class ApiYapiTest extends ApiTestBase {
     @MethodSource("dataUsers")
     @DisplayName("Проверка полного соответствия имён и идентификаторов пользователей")
     void findNameForAllUsers(int userId, String hisName) {
-        get("/users?page=2")
+        given()
+                .queryParam("page", 2)
+                .when()
+                .get("/users")
                 .then()
                 .statusCode(200)
                 .body("data.find { it.id == " + userId + " }.first_name", equalTo(hisName));
