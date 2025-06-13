@@ -17,7 +17,7 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 
 
-public class ApiYapiTest {
+public class ApiYapiTest extends ApiTestBase {
 
 
     static Stream<Arguments> dataUsers() {
@@ -34,7 +34,7 @@ public class ApiYapiTest {
     @MethodSource("dataUsers")
     @DisplayName("Проверка полного соответствия имён и идентификаторов пользователей")
     void findNameForAllUsers(int userId, String hisName) {
-        get("https://reqres.in/api/users?page=2")
+        get("/users?page=2")
                 .then()
                 .statusCode(200)
                 .body("data.find { it.id == " + userId + " }.first_name", equalTo(hisName));
@@ -51,7 +51,7 @@ public class ApiYapiTest {
                 .header("x-api-key", "reqres-free-v1")
                 .body(requestBody)
                 .when()
-                .post("https://reqres.in/api/users")
+                .post("/users")
                 .then()
                 .statusCode(201)
                 .body("name", equalTo("Shiza"))
@@ -76,7 +76,7 @@ public class ApiYapiTest {
                 .header("x-api-key", "reqres-free-v1")
                 .body(userData)
                 .when()
-                .post("https://reqres.in/api/users")
+                .post("/users")
                 .then()
                 .log().all()
                 .extract().response();
@@ -98,7 +98,7 @@ public class ApiYapiTest {
                 .header("x-api-key", "reqres-free-v1")
                 .body(updatedData)
                 .when()
-                .put("https://reqres.in/api/users/" + userId)
+                .put("/users/" + userId)
                 .then()
                 .log().all()
                 .statusCode(200)
@@ -113,7 +113,7 @@ public class ApiYapiTest {
                 .log().all()
                 .header("x-api-key", "reqres-free-v1")
                 .when()
-                .delete("https://reqres.in/api/users/" + userId)
+                .delete("/users/" + userId)
                 .then()
                 .log().all()
                 .statusCode(204);
